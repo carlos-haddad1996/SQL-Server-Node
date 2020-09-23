@@ -1,74 +1,152 @@
 const express = require('express');
-require('msnodesqlv8');
 const app = express();
+require('msnodesqlv8');
+
 const bodyParser = require('body-parser');
-const path = require('path');
+const { SSL_OP_NO_QUERY_MTU, RSA_PSS_SALTLEN_AUTO } = require('constants');
+const port = process.env.PORT || 5000;
 
-app.use(bodyParser.urlencoded({ extended: false }));
+//console.log that your server is up and running
+app.listen(port, () => console.log(`Listening on port ${port}`));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname + '/index.html'));
-});
+//Database Config
+const config = {
+    user: 'user',
+    password: 'password',
+    server: 'server',
+    database: 'database',
+    port: 1433,
+};
 
-app.post('/products', (req, res) => {
-    const sql = require('mssql');
+const sql = require('mssql');
 
-    const config = {
-        user: 'local_user',
-        password: 'local_password',
-        server: 'server',
-        database: 'database_name',
-        port: 1433,
-    };
-
+//create a GET for Clients
+app.get('/client', (req, res) => {
     sql.connect(config, (err) => {
         if (err) {
             console.log(err);
         }
 
-        //create a new Request object to query with
         let sqlRequest = new sql.Request();
-        let year = req.body.products_list;
-        console.log(year);
-        //query to the database and get the records/fields in the data Object
-        let sqlQuery =
-            'SELECT product_name, list_price FROM production.products WHERE model_year = ' +
-            parseInt(year);
-        //Run the query. Send output ONLY the console for now.
+        let sqlQuery = `
+            SELECT TOP (1000) c.[Id]
+                ,c.[Nombre]
+                ,[Apellido]
+                ,[Email]
+                ,[FechaNacimiento]
+                ,[Direccion]
+                ,[Telefono]
+                ,[Usuario]
+                ,[Password]
+                ,CONVERT(VARCHAR(MAX), DECRYPTBYPASSPHRASE('password', Password)) PassDesencriptada
+                ,r.Nombre Rol
+            FROM [DBBusBooking].[dbo].[Cliente] c
+            INNER JOIN Roles r
+                ON r.Id=c.RolId
+        `;
+
         sqlRequest.query(sqlQuery, (err, data) => {
             if (err) {
                 console.log(err);
             }
 
-            //Display the data in the console
-            console.log(data), console.table(data.recordset);
-            console.log(data.rowsAffected);
-            console.log(data.recordset[0]);
-
-            let h =
-                '<h1 style="margin:20px; border:20px solid red;">Product Year Board';
-            let str = '<table style="margin-left:20px">';
-            let row = '';
-
-            for (let j = 0; j < data.recordset.length; j++) {
-                row =
-                    row +
-                    '<tr>' +
-                    '<td style="width:150px;">' +
-                    data.recordset[j].product_name +
-                    '</td>' +
-                    '<td style="width:150px;">' +
-                    data.recordset[j].list_price +
-                    '</td>';
-            }
-            str = str + row + '</table>';
-            //Close the Connection
-            res.send(h + str);
+            console.log(data);
             sql.close();
+            res.send({
+                clientes: data.recordsets,
+            });
         });
     });
 });
 
-const webserver = app.listen(5000, () => {
-    console.log('Node Web Server is running...');
+//create a GET for Origen
+app.get('/origen', (req, res) => {
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+        }
+
+        let sqlRequest = new sql.Request();
+        let sqlQuery = 'SELECT * FROM CiudadOrigen';
+
+        sqlRequest.query(sqlQuery, (err, data) => {
+            if (err) {
+                console.log(err);
+            }
+
+            sql.close();
+            res.send({
+                ciudadOrigen: data.recordsets,
+            });
+        });
+    });
+});
+
+//create a GET for Destino
+app.get('/destino', (req, res) => {
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+        }
+
+        let sqlRequest = new sql.Request();
+        let sqlQuery = 'SELECT * FROM CiudadDestino';
+
+        sqlRequest.query(sqlQuery, (err, data) => {
+            if (err) {
+                console.log(err);
+            }
+
+            sql.close();
+            res.send({
+                ciudadDestino: data.recordsets,
+            });
+        });
+    });
+});
+
+//create a GET for HoraSalida
+app.get('/hora-salida', (req, res) => {
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+        }
+
+        let sqlRequest = new sql.Request();
+        let sqlQuery = 'SELECT * FROM HoraSalida';
+
+        sqlRequest.query(sqlQuery, (err, data) => {
+            if (err) {
+                console.log(err);
+            }
+
+            sql.close();
+            res.send({
+                horaSalida: data.recordsets,
+            });
+        });
+    });
+});
+
+//create a GET for HoraLlegada
+app.get('/hora-llegada', (req, res) => {
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+        }
+
+        let sqlRequest = new sql.Request();
+        let sqlQuery = 'SELECT * FROM HoraLlegada';
+
+        sqlRequest.query(sqlQuery, (err, data) => {
+            if (err) {
+                console.log(err);
+            }
+
+            sql.close();
+            res.send({
+                horaLlegada: data.recordsets,
+            });
+        });
+    });
 });
